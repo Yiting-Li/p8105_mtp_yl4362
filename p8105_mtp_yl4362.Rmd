@@ -1,21 +1,101 @@
 ---
-title: "Simple document"
-output: html_document
+title: "p8105_mtp_yl4362"
+output: github_document
 ---
 
-I'm an R Markdown document! 
-
-# Section 1
-
-Here's a **code chunk** that samples from 
-a _normal distribution_:
-
-```{r}
-samp = rnorm(100)
-length(samp)
+```{r load_libraries}
+library(tidyverse)
+library(readxl)
 ```
 
-# Section 2
+### Problem 1
 
-I can take the mean of the sample, too!
-The mean is `r mean(samp)`.
+```{r}
+raw_df = 
+  read_excel("./data/dogweights_07sept2020.xlsx")
+
+view(raw_df)
+```
+
+In the raw data, there are `r nrow(raw_df)` observations and `r ncol(raw_df)` variables I want to set the first row as the column names, convert `DATE` into meaningful date format, convert weights into `numeric` data type and into uniform unit (lbs), and record `notes` into another file.
+
+1) I import the dates and weights from the dogweights dataset and change column names into lower case.
+
+```{r}
+dog_weights_df = 
+  read_excel("./data/dogweights_07sept2020.xlsx",
+             sheet = "Sheet1", range = "B2:F207",
+             col_types = c("date", "text", "text", "text", "text")) %>%
+  janitor::clean_names() %>%
+  drop_na(date) %>%
+  separate(date, into = c("year", "month", "day"), convert = TRUE) %>%
+  pivot_longer(
+    raisin:std,
+    names_to = "objects",
+    values_to = "weights") %>%
+  separate(weights, into = c("lbs", "oz"), sep = " ") %>%
+  mutate(
+    weights_lbs = as.numeric(lbs) + as.numeric(oz)/16
+  ) %>%
+  select(!(lbs:oz))
+```
+
+I found the values of `date` were numeric rather than date format shown in the excel. Thus, I used `col_types` to specify the types of each column.
+
+I got the warning `the date in B79 got 's'`, so I dropped `NA` value under `date`.
+
+I separated `date` into `year`, `month`, and `day`.
+
+I found the weight of dogs were recorded in `lbs oz` but they were difficult for reading. Thus, I uniformed the weights into pounds.
+
+2) I create another dateframe to store the dates and notes from the dataset and change columnar names into lower case.
+
+```{r}
+notes_df = 
+  read_excel("./data/dogweights_07sept2020.xlsx",
+             sheet = "Sheet1", range = "B2:G207",
+             col_types = c("date", "text", "text", "text", "text", "text")) %>%
+  janitor::clean_names() %>%
+  drop_na(date) %>%
+  separate(date, into = c("year", "month", "day"), convert = TRUE) %>%
+  select(!(raisin:std)) %>%
+  rename(notes = x6) %>%
+  drop_na(notes)
+```
+
+I dropped `NA` value under `date` and separated `date` into `year`, `month`, and `day`.
+
+I found the column name `notes` was missed after importing data from row 2. Thus, I renamed the column name. I also dropped `NA` values under `notes`.
+
+3) I export both dataframes as CSVs and store them into `data` folder.
+
+```{r}
+write.csv(dog_weights_df,"./data/dog_weights_df.csv")
+write.csv(notes_df,"./data/notes_df.csv")
+```
+
+
+### Problem 2
+
+```{r}
+view(dog_weights_df)
+```
+
+In `dog_weights_df` dataset, there are `r nrow(dog_weights_df)` observations and `r ncol(dog_weights_df)` variables, including date, dog names, standard deviation of that day, and their weights in pounds.
+
+In `dog_weights_df`, there are `r nrow(distinct(dog_weights_df, year, month, day))` unique dates.
+
+Below is a table summarizing the number of observations for each dog, their average weight and the standard deviation. 
+```{r}
+dog_weights_df %>%
+  filter(objects %in% c("raisin", "simone", "gagne")) %>%
+  drop_na(weights_lbs) %>%
+  group_by(objects) %>%
+  summarize(num_obs = n(),
+            avg_weight = mean(weights_lbs, na.rm = TRUE),
+            std_weight = sd(weights_lbs, na.rm = TRUE),
+            .groups = 'drop') %>%
+  knitr::kable(digits = 2)
+```
+
+

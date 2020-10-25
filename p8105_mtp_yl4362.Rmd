@@ -44,8 +44,6 @@ I found the values of `date` were numeric rather than date format shown in the e
 
 I got the warning `the date in B79 got 's'`, so I dropped `NA` value under `date`.
 
-I separated `date` into `year`, `month`, and `day`.
-
 I found the weight of dogs were recorded in `lbs oz` but they were difficult for reading. Thus, I uniformed the weights into pounds.
 
 2) I create another dateframe to store the dates and notes from the dataset and change columnar names into lower case.

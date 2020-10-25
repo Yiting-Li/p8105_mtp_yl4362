@@ -7,6 +7,8 @@ output: github_document
 library(tidyverse)
 library(readxl)
 library(patchwork)
+library(ggridges)
+library(viridis)
 ```
 
 ### Problem 1
@@ -35,7 +37,8 @@ dog_weights_df =
     values_to = "weights") %>%
   separate(weights, into = c("lbs", "oz"), sep = " ") %>%
   mutate(
-    weights_lbs = as.numeric(lbs) + as.numeric(oz)/16
+    weights_lbs = as.numeric(lbs) + as.numeric(oz)/16,
+    date = as.Date(date)
   ) %>%
   select(!(lbs:oz))
 ```
@@ -99,21 +102,53 @@ dog_weights_df %>%
 ### Problem 3
 
 ```{r}
-distri = 
+distri_plot = 
   dog_weights_df %>%
   drop_na(weights_lbs) %>%
   filter(objects %in% c("raisin", "simone", "gagne")) %>%
-  ggplot(aes(x = weights_lbs, fill = objects)) +
-  geom_density(alpha = 0.8)
+  mutate(objects = forcats::fct_relevel(objects, c("simone", "gagne", "raisin"))) %>% 
+  ggplot(aes(x = weights_lbs, y = objects)) +
+  geom_density_ridges(scale = .85) +
+  labs(
+    title = "Distribution plot",
+    x = "Weight (Lbs)",
+    y = "Dog names"
+  )
 
-time = 
+time_plot = 
   dog_weights_df %>%
   drop_na(weights_lbs) %>%
-  filter(objects %in% c("raisin", "simone", "gagne"), .preserve = FALSE) %>%
+  filter(objects %in% c("raisin", "simone", "gagne")) %>%
   group_by(objects %in% c("raisin", "simone", "gagne")) %>%
   ggplot(mapping = aes(x = date, y = weights_lbs, color = objects)) + 
-  geom_point() + 
-  geom_line(alpha = 0.8)
+  geom_line(alpha = 0.8) +
+  labs(
+    title = "Time plot",
+    x = "Measured date",
+    y = "Weight (Lbs)"
+  ) +
+  viridis::scale_color_viridis(
+    name = "objects", 
+    discrete = TRUE
+  ) +
+  scale_x_date(
+    date_breaks = "3 months",
+    date_labels = "%y-%m"
+  ) +
+  theme(legend.position = "bottom")
 
-distri + time
+distri_plot + time_plot
+
+ggsave("distri_plot.pdf", distri_plot, width = 8, height = 5)
+ggsave("time_plot.pdf", time_plot, width = 8, height = 5)
 ```
+
+The left `Distribution plot` shows the distribution of each dog's weights. We can see the weights of raisin are way higher than the other dogs, while the weights of gagne and simone are similar.
+
+The right `Time plot` shows the change of each dog's weights through time. 
+
+For raisin, from the beginning time to 2019-Jan, its weight declined from 20 lbs to around 18 lbs. Then its weight kept relatively stable. The extremely low value (<8 lbs) in 2019-Aug may be an incorrect record.
+
+For simone, its weight kept relatively stable through all the time.
+
+For gagne, its weight was stable in the initial time. But since 2019-Apr, its weight dropped consistently and eventually it didn't have any more record from 2019-Sep. From the note, we know that gagne died in 2019-Sep-8.
